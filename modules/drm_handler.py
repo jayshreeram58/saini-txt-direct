@@ -279,7 +279,7 @@ async def drm_handler(bot: Client, m: Message):
          
             elif "https://cpmc/" in url:
                url = url.replace("https://cpmc/", "")  # Extract contentId
-               url = url[:-5]  # Removes last 5 characters (.m3u8)
+               url = url.replace(".m3u8", "")
                r = requests.get("https://api-seven-omega-33.vercel.app/extract", params={
                "content_id":{url},
                "token": {raw_text4}
