@@ -126,63 +126,58 @@ def vid_info(info):
     return new_info
 
 
+import os
+import subprocess
+from pathlib import Path
+
 async def decrypt_and_merge_video(mpd_url, keys_string, output_path, output_name, quality="720"):
     try:
         output_path = Path(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        cmd1 = f'yt-dlp -f "bv[height<={quality}]+ba/b" -o "{output_path}/file.%(ext)s" --allow-unplayable-format --no-check-certificate --external-downloader aria2c "{mpd_url}"'
-        print(f"Running command: {cmd1}")
-        os.system(cmd1)
-        
-        avDir = list(output_path.iterdir())
-        print(f"Downloaded files: {avDir}")
-        print("Decrypting")
+        # Step 1: Download with yt-dlp
+        cmd1 = f'yt-dlp -f "bv[height<={quality}]+ba/b" -o "{output_path}/file.%(ext)s" --allow-unplayable-formats --no-check-certificate --external-downloader aria2c "{mpd_url}"'
+        print(f"▶️ Downloading: {cmd1}")
+        subprocess.run(cmd1, shell=True)
 
-        video_decrypted = False
-        audio_decrypted = False
+        # Step 2: Detect downloaded files
+        video_file = None
+        audio_file = None
+        for f in output_path.iterdir():
+            if f.suffix in [".mp4", ".webm"] and not video_file:
+                video_file = f
+            elif f.suffix in [".m4a", ".webm"] and not audio_file:
+                audio_file = f
 
-        for data in avDir:
-            if data.suffix == ".mp4" and not video_decrypted:
-                cmd2 = f'mp4decrypt {keys_string} --show-progress "{data}" "{output_path}/video.mp4"'
-                print(f"Running command: {cmd2}")
-                os.system(cmd2)
-                if (output_path / "video.mp4").exists():
-                    video_decrypted = True
-                data.unlink()
-            elif data.suffix == ".m4a" and not audio_decrypted:
-                cmd3 = f'mp4decrypt {keys_string} --show-progress "{data}" "{output_path}/audio.m4a"'
-                print(f"Running command: {cmd3}")
-                os.system(cmd3)
-                if (output_path / "audio.m4a").exists():
-                    audio_decrypted = True
-                data.unlink()
+        if not video_file or not audio_file:
+            raise FileNotFoundError("❌ Decryption failed: video or audio file not found.")
 
-        if not video_decrypted or not audio_decrypted:
-            raise FileNotFoundError("Decryption failed: video or audio file not found.")
+        # Step 3: Decrypt
+        decrypted_video = output_path / "video.mp4"
+        decrypted_audio = output_path / "audio.m4a"
 
-        cmd4 = f'ffmpeg -i "{output_path}/video.mp4" -i "{output_path}/audio.m4a" -c copy "{output_path}/{output_name}.mp4"'
-        print(f"Running command: {cmd4}")
-        os.system(cmd4)
-        if (output_path / "video.mp4").exists():
-            (output_path / "video.mp4").unlink()
-        if (output_path / "audio.m4a").exists():
-            (output_path / "audio.m4a").unlink()
-        
-        filename = output_path / f"{output_name}.mp4"
+        subprocess.run(f'mp4decrypt {keys_string} "{video_file}" "{decrypted_video}"', shell=True)
+        subprocess.run(f'mp4decrypt {keys_string} "{audio_file}" "{decrypted_audio}"', shell=True)
 
-        if not filename.exists():
-            raise FileNotFoundError("Merged video file not found.")
+        video_file.unlink(missing_ok=True)
+        audio_file.unlink(missing_ok=True)
 
-        cmd5 = f'ffmpeg -i "{filename}" 2>&1 | grep "Duration"'
-        duration_info = os.popen(cmd5).read()
-        print(f"Duration info: {duration_info}")
+        # Step 4: Merge
+        final_file = output_path / f"{output_name}.mp4"
+        subprocess.run(f'ffmpeg -y -i "{decrypted_video}" -i "{decrypted_audio}" -c copy "{final_file}"', shell=True)
 
-        return str(filename)
+        decrypted_video.unlink(missing_ok=True)
+        decrypted_audio.unlink(missing_ok=True)
+
+        if not final_file.exists():
+            raise FileNotFoundError("❌ Merged video file not found.")
+
+        print(f"✅ Final video ready: {final_file}")
+        return str(final_file)
 
     except Exception as e:
-        print(f"Error during decryption and merging: {str(e)}")
-        raise
+        print(f"🔥 Error in decrypt_and_merge_video: {e}")
+        return None
 
 async def run(cmd):
     proc = await asyncio.create_subprocess_shell(
