@@ -292,7 +292,7 @@ async def drm_handler(bot: Client, m: Message):
                keys_string = ""
                if signed and "drm" in signed.lower():
     # DRM case: extract directly from response
-                 url = data.get("mpd")
+                 mpd = data.get("mpd")
                  keys = data.get("keys", [])
                  if not mpd:
                    raise ValueError("❌ MPD URL missing in DRM response.")
