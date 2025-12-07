@@ -249,7 +249,7 @@ async def download_video(url, cmd, name):
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
-        await download_video(url, cmd, name)  # no headers now
+        await download_video(url, cmd, name, headers=headers)
         return
 
     failed_counter = 0
