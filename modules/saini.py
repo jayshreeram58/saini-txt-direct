@@ -285,25 +285,25 @@ def decrypt_file(file_path, key):
                 mmapped_file[i] ^= ord(key[i]) if i < len(key) else i 
     return True  
 
+
+
 async def download_and_decrypt_video(url, cmd, name, key):
-        if "appx.co.in" in url:
-            cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-        
-        video_path = await download_video(url, cmd, name)  
-    
-    if video_path:  
-        decrypted = decrypt_file(video_path, key)  
-        if decrypted:  
-            print(f"File {video_path} decrypted successfully.")  
-            return video_path  
-        else:  
-            print(f"Failed to decrypt {video_path}.")  
-            return None  
-            
-            def decrypt_file(file_path, key):  
-    if not os.path.exists(file_path): 
-        return False  
-            
+    if "appx.co.in" in url:
+        cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
+
+    video_path = await download_video(url, cmd, name)
+
+    if video_path:
+        decrypted = decrypt_file(video_path, key)
+        if decrypted:
+            print(f"File {video_path} decrypted successfully.")
+            return video_path
+        else:
+            print(f"Failed to decrypt {video_path}.")
+            return None
+    else:
+        print("Video download failed.")
+        return None
             
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
