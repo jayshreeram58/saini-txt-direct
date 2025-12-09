@@ -289,7 +289,7 @@ async def download_and_decrypt_video(url, cmd, name, key):
         if "appx.co.in" in url:
             cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
         
-    video_path = await download_video(url, cmd, name)  
+        video_path = await download_video(url, cmd, name)  
     
     if video_path:  
         decrypted = decrypt_file(video_path, key)  
@@ -299,6 +299,10 @@ async def download_and_decrypt_video(url, cmd, name, key):
         else:  
             print(f"Failed to decrypt {video_path}.")  
             return None  
+            
+            def decrypt_file(file_path, key):  
+    if not os.path.exists(file_path): 
+        return False  
             
             
 
