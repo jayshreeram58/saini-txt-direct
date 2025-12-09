@@ -442,6 +442,9 @@ async def drm_handler(bot: Client, m: Message):
                         continue    
   
                 elif ".pdf" in url:
+                    if "static-db-v2.appx.co.in" in url:
+                        filename = urlparse(url).path.split("/")[-1]
+                        url = f"https://appx-content-v2.classx.co.in/paid_course4/{filename}"
                     if m.text:
                         namef = f'{namef}'
                     else:
@@ -449,7 +452,7 @@ async def drm_handler(bot: Client, m: Message):
                             namef = f'{v_name}'
                         else:
                             namef = f'{namef}'
-                    if "cwmediabkt99" in url:
+                     if "cwmediabkt99" in url:
                         max_retries = 15  # Define the maximum number of retries
                         retry_delay = 4  # Delay between retries in seconds
                         success = False  # To track whether the download was successful
