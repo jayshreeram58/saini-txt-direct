@@ -343,9 +343,34 @@ async def drm_handler(bot: Client, m: Message):
                 url = f"https://anonymouspwplayer-25261acd1521.herokuapp.com/pw?url={url}&token={raw_text4}"
                            
             
-            elif 'encrypted.m' in url:
-                appxkey = url.split('*')[1]
-                url = url.split('*')[0]
+elif 'appxsignurl.vercel.app/appx/' in url:
+    url_parts = url.split('*')
+    fetch_url = url_parts[0].strip()
+    response = requests.get(fetch_url)
+
+    if response.status_code == 200 and response.text.strip():
+        fetched_url = response.text.strip()
+
+        # Step 2: Check if fetched URL contains '*'
+        if '*' in fetched_url:
+            fetched_parts = fetched_url.split('*')
+            url = fetched_parts[0]
+            encoded_key = fetched_parts[1]
+
+            # Step 3: Decode the key
+            if encoded_key:
+                decoded_key = base64.b64decode(encoded_key).decode('utf-8', errors='ignore')
+                url = f"{url}*{decoded_key}"
+                print(f"[INFO] Final URL with decoded key: {url}")
+            else:
+                print("[WARN] No key to decode in fetched URL")
+                url = fetched_parts[0]
+        else:
+            url = fetched_url
+            print(f"[INFO] Final URL without key: {url}")
+    else:
+        print(f"[ERROR] Failed to fetch signed URL: {response.status_code}")
+        url = None
                 
     
 
