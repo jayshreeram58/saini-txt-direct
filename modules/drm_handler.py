@@ -384,7 +384,7 @@ async def drm_handler(bot: Client, m: Message):
             elif 'encrypted.m' in url:
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
-            elif 'appxsignurl.vercel.app/appx/' in url or 'encrypted.m' in url:
+            elif 'appxsignurl.vercel.app/appx/' in url:
  # PART 1: CLEAN URL + KEY BUILDER (NO TRY/EXCEPT)
                 final_url = url
                 appxkey = None
@@ -407,19 +407,32 @@ async def drm_handler(bot: Client, m: Message):
                  final_url = f"{base_part}*{decoded_key}"
                  appxkey = decoded_key
 
-                # Case C: Plain URL
+                # Case C: Plain URL or API URL
                 else:
-                 final_url = url
-                 appxkey = None
+                    if "appxsignurl.vercel.app/appx/" in url:
+                        try:
+                            response = requests.get(url)
+                            data = json.loads(response.text)
+                            real_url = data["all_qualities"][0]["url"]
+                            encoded_key = data["all_qualities"][0]["key"]
+                            decoded_key = base64.b64decode(encoded_key).decode("utf-8", errors="ignore")
+                            final_url = f"{real_url}*{decoded_key}"
+                            appxkey = decoded_key
+                        except (KeyError, json.JSONDecodeError, requests.RequestException) as e:
+                            final_url = url
+                            appxkey = None
+                    else:
+                        final_url = url
+                        appxkey = None
 
 
   
                 
     
 
-            ytf = youtube_format(raw_text2)
             if "youtu" in url:
-                  video_path = await download_youtube(url, ytf, name)
+             ytf = youtube_format(raw_text2)
+             video_path = await download_youtube(url, ytf, nam)
            
             if "jw-prod" in url:
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
@@ -506,13 +519,18 @@ async def drm_handler(bot: Client, m: Message):
                     final_url = url
                     need_referer = False
                     if "appxsignurl.vercel.app/appx/" in url:
-                        pdf_index = url.find(".pdf")
-                        clean_fetch_url = url[:pdf_index + 4]
-                        response = requests.get(clean_fetch_url)
-                        data = json.loads(response.text)
-                        final_url = data["pdf_url"]
-                        namef = data["title"]
-                        need_referer = True
+                        try:
+                            pdf_index = url.find(".pdf")
+                            clean_fetch_url = url[:pdf_index + 4]
+                            response = requests.get(clean_fetch_url)
+                            data = json.loads(response.text)
+                            final_url = data["pdf_url"]
+                            namef = data["title"]
+                            need_referer = True
+                        except (KeyError, json.JSONDecodeError, requests.RequestException) as e:
+                            # Fallback to original URL if API fails
+                            final_url = url
+                            need_referer = False
                     elif "static-db-v2.appx.co.in" in url:
                         filename = urlparse(url).path.split("/")[-1]
                         final_url = f"https://appx-content-v2.classx.co.in/paid_course4/{filename}"
@@ -654,7 +672,7 @@ async def drm_handler(bot: Client, m: Message):
                            f"<blockquote>📚𝐓𝐢𝐭𝐥𝐞 » {namef}</blockquote>\n┃\n" \
                            f"┣🍁𝐐𝐮𝐚𝐥𝐢𝐭𝐲 » {quality}\n┃\n" \
                            f'┣━🔗𝐋𝐢𝐧𝐤 » <a href="{link0}">**Original Link**</a>\n┃\n' \
-                           f'╰━━🖇️𝐔𝐫𝐥 » <a href="{url}">**Api Link**</a>\n' \
+                           f'╰━━🖇️𝐔𝐫𝐥 » <a href="{final_url}">**Api Link**</a>\n' \
                            f"━━━━━━━━━━━━━━━━━━━━━━━━━\n" \
                            f"🛑**Send** /stop **to stop process**\n┃\n" \
                            f"╰━✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
