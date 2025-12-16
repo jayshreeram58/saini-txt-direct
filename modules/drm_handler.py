@@ -48,6 +48,46 @@ import ffmpeg
 from urllib.parse import urlparse
 import base64
 
+# ---------------------------------------------------------
+# YOUTUBE FORMAT SELECTOR
+# ---------------------------------------------------------
+def youtube_format(raw_text2):
+    return (
+        f"bv*[height<={raw_text2}][ext=mp4]+ba[ext=m4a]/"
+        f"b[height<={raw_text2}]"
+    )
+
+# ---------------------------------------------------------
+# YOUTUBE DOWNLOAD HANDLER (NO COOKIES)
+# ---------------------------------------------------------
+async def download_youtube(url, ytf, name):
+    output_file = f"{name}.mp4"
+    cmd = f'yt-dlp -f "{ytf}" "{url}" -o "{output_file}"'
+
+    try:
+        process = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            if os.path.exists(output_file):
+                print(f"YouTube download complete: {output_file}")
+                return output_file
+            else:
+                print("Download finished but file missing.")
+                return None
+        else:
+            print("YouTube download failed:")
+            print(stderr.decode(errors="ignore"))
+            return None
+
+    except Exception as e:
+        print(f"Error during YouTube download: {e}")
+        return None
 # .....,.....,.......,...,.......,....., .....,.....,.......,...,.......,.....,
 
 
@@ -284,8 +324,8 @@ async def drm_handler(bot: Client, m: Message):
                url = url.replace("https://cpmc/", "")  # Extract contentId
                url = url.replace(".m3u8", "")
                r = requests.get("https://api-seven-omega-33.vercel.app/extract", params={
-               "content_id":{url},
-               "token": {raw_text4}
+               "content_id": url,
+               "token": raw_text4
                })
                data = r.json()
                signed = r.json().get("signed_url")
@@ -301,11 +341,8 @@ async def drm_handler(bot: Client, m: Message):
                    raise ValueError("❌ MPD URL missing in DRM response.")
                  if not keys:
                     raise ValueError("❌ Decryption keys missing in DRM response.")
- 
-                    url = mpd
-                 
+                 url = mpd
                  keys_string = " ".join([f"--key {key}" for key in keys])
-
                else:
                    url = signed
                 
@@ -347,44 +384,42 @@ async def drm_handler(bot: Client, m: Message):
             elif 'encrypted.m' in url:
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
-            elif 'appxsignurl.vercel.app/appx/' in url and 'm3u8' in url:
+            elif 'appxsignurl.vercel.app/appx/' in url or 'encrypted.m' in url:
+ # PART 1: CLEAN URL + KEY BUILDER (NO TRY/EXCEPT)
+                final_url = url
+                appxkey = None
+                encoded_key = None
 
-                 url_parts = url.split('*')
-                 fetch_url = url_parts[0].strip()
-                 response = requests.get(fetch_url)
+    # Case A: URL is JSON string
+                if url.strip().startswith("{"):
+                 data = json.loads(url)
+                 real_url = data["all_qualities"][0]["url"]
+                 encoded_key = data["all_qualities"][0]["key"]
 
-                 if response.status_code == 200 and response.text.strip():
-                     fetched_url = response.text.strip()
+                 decoded_key = base64.b64decode(encoded_key).decode("utf-8", errors="ignore")
+                 final_url = f"{real_url}*{decoded_key}"
+                 appxkey = decoded_key
 
-        # Step 2: Check if fetched URL contains '*'
-                     if '*' in fetched_url:
-                      fetched_parts = fetched_url.split('*')
-                      url = fetched_parts[0]
-                      encoded_key = fetched_parts[1]
+    # Case B: URL contains "*"
+                elif "*" in url:
+                 base_part, encoded_key = url.split("*", 1)
+                 decoded_key = base64.b64decode(encoded_key).decode("utf-8", errors="ignore")
+                 final_url = f"{base_part}*{decoded_key}"
+                 appxkey = decoded_key
 
-            # Step 3: Decode the key
-                      if encoded_key:
-                       decoded_key = base64.b64decode(encoded_key).decode('utf-8', errors='ignore')
-                       url = f"{url}*{decoded_key}"
-                       print(f"[INFO] Final URL with decoded key: {url}")
-                      else:
-                       print("[WARN] No key to decode in fetched URL")
-                       url = fetched_parts[0]
-                     else:
-                      url = fetched_url
-                      print(f"[INFO] Final URL without key: {url}")
-                 else:
-                  print(f"[ERROR] Failed to fetch signed URL: {response.status_code}")
-                  url = None
+                # Case C: Plain URL
+                else:
+                 final_url = url
+                 appxkey = None
+
+
+  
                 
     
 
             if "youtu" in url:
-                ytf = f"bv*[height<={raw_text2}][ext=mp4]+ba[ext=m4a]/b[height<=?{raw_text2}]"
-            elif "embed" in url:
-                ytf = f"bestvideo[height<={raw_text2}]+bestaudio/best[height<={raw_text2}]"
-            else:
-                ytf = f"b[height<={raw_text2}]/bv[height<={raw_text2}]+ba/b/bv+ba"
+                  ytf = youtube_format(raw_text2)
+                  video_path = await download_youtube(url, ytf, name)
            
             if "jw-prod" in url:
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
@@ -462,27 +497,26 @@ async def drm_handler(bot: Client, m: Message):
                             cchtml = f'<b>{str(count).zfill(3)}.</b> {name1} .html'
                     
                 if "drive" in url:
-                    try:
-                        ka = await helper.download(url, name)
-                        copy = await bot.send_document(chat_id=channel_id,document=ka, caption=cc1)
-                        count+=1
-                        os.remove(ka)
-                    except FloodWait as e:
-                        await m.reply_text(str(e))
-                        time.sleep(e.x)
-                        continue    
+                    ka = await helper.download(url, name)
+                    copy = await bot.send_document(chat_id=channel_id,document=ka, caption=cc1)
+                    count+=1
+                    os.remove(ka)
   
                 elif ".pdf" in url:
+                    final_url = url
+                    need_referer = False
                     if "appxsignurl.vercel.app/appx/" in url:
-                      pdf_index = url.lower().find(".pdf")
-                      if pdf_index != -1:
-                       url = url[:pdf_index + 4]
-
-                    if "static-db-v2.appx.co.in" in url:
+                        pdf_index = url.find(".pdf")
+                        clean_fetch_url = url[:pdf_index + 4]
+                        response = requests.get(clean_fetch_url)
+                        data = json.loads(response.text)
+                        final_url = data["pdf_url"]
+                        namef = data["title"]
+                        need_referer = True
+                    elif "static-db-v2.appx.co.in" in url:
                         filename = urlparse(url).path.split("/")[-1]
-                        url = f"https://appx-content-v2.classx.co.in/paid_course4/{filename}"
-                    if m.text:
-                        namef = f'{namef}'
+                        final_url = f"https://appx-content-v2.classx.co.in/paid_course4/{filename}"
+                        need_referer = True
                     else:
                         if topic == "/yes":
                             namef = f'{v_name}'
@@ -524,16 +558,47 @@ async def drm_handler(bot: Client, m: Message):
                             
                     else:
                         try:
-                            cmd = f'yt-dlp -o "{namef}.pdf" "{url}"'
-                            download_cmd = f"{cmd} -R 25 --fragment-retries 25"
-                            os.system(download_cmd)
-                            copy = await bot.send_document(chat_id=channel_id, document=f'{namef}.pdf', caption=cc1)
-                            count += 1
-                            os.remove(f'{namef}.pdf')
+                            need_referer = False
+        # Case 1: AppX signed PDF
+                            if "appxsignurl.vercel.app/appx/" in url:
+                             need_referer = True
+
+                              # Case 2: static-db-v2 PDF
+                            if "static-db-v2.appx.co.in" in url:
+                             need_referer = True
+
+        # -----------------------------------------
+        # BUILD yt-dlp COMMAND
+        # -----------------------------------------
+                            if need_referer:
+                             referer = "https://player.akamai.net.in/"
+                             cmd = f'yt-dlp --add-header "Referer: {referer}" -o "{namef}.pdf" "{url}"'
+                            else:
+                             cmd = f'yt-dlp -o "{namef}.pdf" "{url}"'
+
+                             download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+
+        # -----------------------------------------
+        # DOWNLOAD PDF
+        # -----------------------------------------
+                             os.system(download_cmd)
+
+        # -----------------------------------------
+        # SEND PDF
+        # -----------------------------------------
+                             copy = await bot.send_document(
+                             chat_id=channel_id,
+                             document=f"{namef}.pdf",
+                             caption=cc1
+                             )
+
+                             count += 1
+                             os.remove(f"{namef}.pdf")
+
                         except FloodWait as e:
                             await m.reply_text(str(e))
                             time.sleep(e.x)
-                            continue    
+                            continue
 
                 elif ".ws" in url and  url.endswith(".ws"):
                     try:
