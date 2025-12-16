@@ -217,6 +217,8 @@ async def drm_handler(bot: Client, m: Message):
         await editable.delete()
 
     elif m.text:
+        raw_text4 = '/d'
+        path = f"./downloads/{m.chat.id}"
         if any(ext in links[i][1] for ext in [".pdf", ".jpeg", ".jpg", ".png"] for i in range(len(links))):
             raw_text = '1'
             raw_text7 = '/d'
@@ -242,8 +244,8 @@ async def drm_handler(bot: Client, m: Message):
                 elif raw_text2 == "720":
                     res = "1280x720"
                 elif raw_text2 == "1080":
-                    res = "1920x1080" 
-                else: 
+                    res = "1920x1080"
+                else:
                     res = "UN"
             except Exception:
                     res = "UN"
@@ -292,6 +294,7 @@ async def drm_handler(bot: Client, m: Message):
             link0 = "https://" + Vxy
 
             name1 = links[i][0].replace("(", "[").replace(")", "]").replace("_", "").replace("\t", "").replace(":", "").replace("/", "").replace("+", "").replace("#", "").replace("|", "").replace("@", "").replace("*", "").replace(".", "").replace("https", "").replace("http", "").strip()
+            name = name1
             if "visionias" in url:
                 async with ClientSession() as session:
                     async with session.get(url, headers={'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9', 'Accept-Language': 'en-US,en;q=0.9', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Pragma': 'no-cache', 'Referer': 'http://www.visionias.in/', 'Sec-Fetch-Dest': 'iframe', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Site': 'cross-site', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Linux; Android 12; RMX2121) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36', 'sec-ch-ua': '"Chromium";v="107", "Not=A?Brand";v="24"', 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"Android"',}) as resp:
@@ -413,7 +416,7 @@ async def drm_handler(bot: Client, m: Message):
 
             if "youtu" in url:
              ytf = youtube_format(raw_text2)
-             video_path = await download_youtube(url, ytf, nam)
+             video_path = await download_youtube(url, ytf, name)
            
             if "jw-prod" in url:
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
@@ -499,6 +502,7 @@ async def drm_handler(bot: Client, m: Message):
                 elif ".pdf" in url:
                     final_url = url
                     need_referer = False
+                    namef = name1
                     if "appxsignurl.vercel.app/appx/" in url:
                         try:
                             pdf_index = url.find(".pdf")
@@ -522,6 +526,7 @@ async def drm_handler(bot: Client, m: Message):
                         else:
                             namef = f'{namef}'
                     if "cwmediabkt99" in url:
+                        namef = name1
                         max_retries = 15  # Define the maximum number of retries
                         retry_delay = 4  # Delay between retries in seconds
                         success = False  # To track whether the download was successful
@@ -552,10 +557,8 @@ async def drm_handler(bot: Client, m: Message):
                                 failure_msgs.append(failure_msg)
                                 await asyncio.sleep(retry_delay)
                                 continue 
-                        for msg in failure_msgs:
-                            await msg.delete()
-                            
                     else:
+                        namef = name1
                         try:
                             need_referer = False
                             # Case 1: AppX signed PDF
@@ -613,6 +616,7 @@ async def drm_handler(bot: Client, m: Message):
                             
                 elif any(ext in url for ext in [".jpg", ".jpeg", ".png"]):
                     try:
+                        namef = name1
                         ext = url.split('.')[-1]
                         cmd = f'yt-dlp -o "{namef}.{ext}" "{url}"'
                         download_cmd = f"{cmd} -R 25 --fragment-retries 25"
@@ -627,6 +631,7 @@ async def drm_handler(bot: Client, m: Message):
 
                 elif any(ext in url for ext in [".mp3", ".wav", ".m4a"]):
                     try:
+                        namef = name1
                         ext = url.split('.')[-1]
                         cmd = f'yt-dlp -o "{namef}.{ext}" "{url}"'
                         download_cmd = f"{cmd} -R 25 --fragment-retries 25"
