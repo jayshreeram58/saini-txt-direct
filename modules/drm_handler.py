@@ -297,6 +297,7 @@ async def drm_handler(bot: Client, m: Message):
             name = name1
             # GLOBAL FIX — now namef is always defined
             namef = name1
+            appxkey = None
 
             if "visionias" in url:
                 async with ClientSession() as session:
