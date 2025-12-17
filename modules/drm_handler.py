@@ -47,7 +47,8 @@ import shutil
 import ffmpeg
 from urllib.parse import urlparse
 import base64
-
+# ---------------------------------------------------------
+namef = name1
 # ---------------------------------------------------------
 # YOUTUBE FORMAT SELECTOR
 # ---------------------------------------------------------
@@ -368,7 +369,7 @@ async def drm_handler(bot: Client, m: Message):
             elif 'encrypted.m' in url:
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
-            elif "appxsignurl.vercel.app/appx/" in url or (".m3u8" in url and "appx" in url):
+            elif ".m3u8" in url and "appx" in url:
              r = requests.get(url, timeout=10)
              data_json = r.json()
 
@@ -498,12 +499,14 @@ async def drm_handler(bot: Client, m: Message):
                     elif "static-db.appx.co.in" in url:
                            final_url = url
                            need_referer = True
+                           namef = name1
 
 
                     elif "static-db-v2.appx.co.in" in url:
                         filename = urlparse(url).path.split("/")[-1]
                         final_url = f"https://appx-content-v2.classx.co.in/paid_course4/{filename}"
                         need_referer = True
+                        namef = name1
                     else:
                         if topic == "/yes":
                             namef = f'{v_name}'
