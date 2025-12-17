@@ -368,7 +368,7 @@ async def drm_handler(bot: Client, m: Message):
             elif 'encrypted.m' in url:
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
-            elif "appxsignurl.vercel.app/appx/" in url:
+            elif "appxsignurl.vercel.app/appx/" in url or (".m3u8" in url and "appx" in url):
              r = requests.get(url, timeout=10)
              data_json = r.json()
 
