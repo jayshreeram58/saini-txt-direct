@@ -370,14 +370,23 @@ async def drm_handler(bot: Client, m: Message):
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
             elif "dragoapi.vercel.app" in url and "*" in url and url.strip().endswith(".mkv"):
+    # Split into base URL and key
              parts = url.split("*", 1)
              if len(parts) == 2:
-              url = parts[0].strip()
+              base_url = parts[0].strip()
               appxkey = parts[1].strip()
-              print(f"Parsed URL: {url}")
-              print(f"Parsed appxkey: {appxkey}")
+
+        # Step 1: Hit the base_url (without *key) to get the redirect/final link
+              response = requests.get(base_url, timeout=10, allow_redirects=True)
+              final_url = response.url.strip()  # resolved CDN link
+
+        # Step 2: Overwrite url with the resolved link
+              url = final_url
+
+              print(f"Resolved URL: {url}")
+              print(f"AppxKey: {appxkey}")
              else:
-              print("Invalid dragoapi URL format, missing key part.")
+              print("Invalid dragoapi URL format.")
               url, appxkey = None, None
             elif ".m3u8" in url and "appx" in url:
              r = requests.get(url, timeout=10)
