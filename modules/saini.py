@@ -320,21 +320,24 @@ async def download_and_decrypt_video(url, cmd, name, key: bytes):
     if cmd is None:
         cmd = ""
 
+    # Add referer header depending on source
     if "akstechnicalclasses" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-    elif any(x in url for x in ["appxsignurl.vercel.app/appx/", "appx.co.in", "encrypted.m"]):
+    elif "appxsignurl.vercel.app/appx/" in url or "appx.co.in" in url or "encrypted.m" in url:
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
 
+    # Download step
     video_path = await download_video(url, cmd, name)
 
-    if not video_path or video_path == "None":
+    if not video_path or video_path in ["None", ""]:
         print("Video download failed or returned None.")
         return None
 
-    decrypted = decrypt_file(video_path, key)
-    if decrypted:
-        print(f"File {video_path} decrypted successfully.")
-        return video_path
+    # Decrypt step
+    decrypted_path = decrypt_file(video_path, key)
+    if decrypted_path:
+        print(f"File {decrypted_path} decrypted successfully.")
+        return decrypted_path
     else:
         print(f"Failed to decrypt {video_path}.")
         return None
