@@ -312,25 +312,15 @@ def decrypt_file(file_path, key):
     return True  
 
 
-async def download_and_decrypt_video(url, cmd, name, key):
-
-    # Avoid NoneType error
+async def download_and_decrypt_video(url, cmd, name, key: bytes):
     if cmd is None:
         cmd = ""
 
-    # Referer for AKS Technical Classes
     if "akstechnicalclasses" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-
-    # Referer for AppxSignURL (IMPORTANT)
-    if "appxsignurl.vercel.app/appx/" in url:
+    elif "appxsignurl.vercel.app/appx/" in url or "appx.co.in" in url or "encrypted.m" in url:
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
 
-    # Referer for AppX m3u8 / encrypted.m
-    if "appx.co.in" in url or "encrypted.m" in url:
-        cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
-
-    # Download video
     video_path = await download_video(url, cmd, name)
 
     if video_path:
@@ -344,7 +334,6 @@ async def download_and_decrypt_video(url, cmd, name, key):
     else:
         print("Video download failed.")
         return None
-            
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
     subprocess.run(f'ffmpeg -i "{filename}" -ss 00:00:10 -vframes 1 "{filename}.jpg"', shell=True)
