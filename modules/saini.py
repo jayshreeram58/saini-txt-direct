@@ -234,10 +234,16 @@ def time_name():
 
 
 import subprocess, os, asyncio, logging
+failed_counter = 0
+
 async def download_video(url, cmd, name):
     global failed_counter
+
+    # sanitize name (remove extension if present)
+    base_name = os.path.splitext(name)[0]
+
     download_cmd = (
-        f'yt-dlp "{url}" -o "{name}.%(ext)s" {cmd} '
+        f'yt-dlp "{url}" -o "{base_name}.%(ext)s" {cmd} '
         '-R 25 --fragment-retries 25 '
         '--external-downloader aria2c '
         '--downloader-args "aria2c: -x 16 -j 32"'
@@ -251,18 +257,16 @@ async def download_video(url, cmd, name):
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
-        return await download_video(url, cmd, name)
+        return await download_video(url, cmd, base_name)
 
     failed_counter = 0
 
-    base = os.path.splitext(name)[0]
     for ext in [".mp4", ".mkv", ".webm"]:
-        candidate = base + ext
+        candidate = base_name + ext
         if os.path.isfile(candidate):
             return candidate
 
     return None
-
 
 
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
@@ -277,21 +281,29 @@ async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, chan
     time.sleep(3) 
 
 
-def decrypt_file(file_path, key):  
-    if not os.path.exists(file_path): 
-        return False  
+def decrypt_file(file_path, key: bytes):
+    if not os.path.exists(file_path):
+        return None
 
-    with open(file_path, "r+b") as f:  
-        num_bytes = min(28, os.path.getsize(file_path))  
-        with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:  
-            for i in range(num_bytes):  
-                mmapped_file[i] ^= ord(key[i]) if i < len(key) else i 
-    return True  
+    # Output decrypted file path
+    base, ext = os.path.splitext(file_path)
+    decrypted_path = f"{base}.decrypted{ext}"
+
+    with open(file_path, "r+b") as f:
+        num_bytes = min(28, os.path.getsize(file_path))
+        with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
+            for i in range(num_bytes):
+                mmapped_file[i] ^= key[i] if i < len(key) else i
+
+    # For simplicity, return same file path (in‑place decrypt)
+    return file_path
+
+
 
 
 
 async def download_and_decrypt_video(url, cmd, name, key: bytes):
-    if "appx.co.in" in url:
+    if "akstechnicalclasses" in url or "appx.co.in" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
     elif "appx" in url or "encrypted.m" in url or "dragoapi.vercel.app" in url:
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
@@ -301,13 +313,14 @@ async def download_and_decrypt_video(url, cmd, name, key: bytes):
         print("Video download failed.")
         return None
 
-    decrypted = decrypt_file(video_path, key)
-    if decrypted:
-        print(f"File {video_path} decrypted successfully.")
-        return decrypted
+    decrypted_path = decrypt_file(video_path, key)
+    if decrypted_path:
+        print(f"File {decrypted_path} decrypted successfully.")
+        return decrypted_path
     else:
         print(f"Failed to decrypt {video_path}.")
         return None
+
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
     subprocess.run(f'ffmpeg -i "{filename}" -ss 00:00:10 -vframes 1 "{filename}.jpg"', shell=True)
