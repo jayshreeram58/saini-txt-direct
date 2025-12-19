@@ -234,22 +234,20 @@ def time_name():
 
 
 import subprocess, os, asyncio, logging
-
-failed_counter = 0
-
 async def download_video(url, cmd, name):
     global failed_counter
-
-    # Build proper yt-dlp command with URL and output file
-    download_cmd = f'yt-dlp "{url}" -o "{name}" {cmd} -R 25 --fragment-retries 25 ' \
-                   '--external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
+    download_cmd = (
+        f'yt-dlp "{url}" -o "{name}.%(ext)s" {cmd} '
+        '-R 25 --fragment-retries 25 '
+        '--external-downloader aria2c '
+        '--downloader-args "aria2c: -x 16 -j 32"'
+    )
 
     print(download_cmd)
     logging.info(download_cmd)
 
     k = subprocess.run(download_cmd, shell=True)
 
-    # Retry logic for visionias
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
@@ -257,15 +255,16 @@ async def download_video(url, cmd, name):
 
     failed_counter = 0
 
-    # Check for downloaded file
     base = os.path.splitext(name)[0]
-    for ext in ["", ".webm", ".mkv", ".mp4", ".mp4.webm"]:
-        candidate = base + ext if ext else name
+    for ext in [".mp4", ".mkv", ".webm"]:
+        candidate = base + ext
         if os.path.isfile(candidate):
             return candidate
 
-    # If nothing found, return None
     return None
+
+
+
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
     reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
     time.sleep(1)
@@ -292,31 +291,20 @@ def decrypt_file(file_path, key):
 
 
 async def download_and_decrypt_video(url, cmd, name, key: bytes):
-    if not url or not isinstance(url, str):
-        print("Invalid URL provided.")
-        return None
-
-    if cmd is None:
-        cmd = ""
-
-    # Add referer header depending on source
-    if "akstechnicalclasses" in url:
+    if "appx.co.in" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
     elif "appx" in url or "encrypted.m" in url or "dragoapi.vercel.app" in url:
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
 
-    # Download step
     video_path = await download_video(url, cmd, name)
-
-    if not video_path or video_path in ["None", ""]:
-        print("Video download failed or returned None.")
+    if not video_path:
+        print("Video download failed.")
         return None
 
-    # Decrypt step
-    decrypted_path = decrypt_file(video_path, key)
-    if decrypted_path:
-        print(f"File {decrypted_path} decrypted successfully.")
-        return decrypted_path
+    decrypted = decrypt_file(video_path, key)
+    if decrypted:
+        print(f"File {video_path} decrypted successfully.")
+        return decrypted
     else:
         print(f"Failed to decrypt {video_path}.")
         return None
