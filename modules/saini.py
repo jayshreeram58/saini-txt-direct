@@ -313,26 +313,30 @@ def decrypt_file(file_path, key):
 
 
 async def download_and_decrypt_video(url, cmd, name, key: bytes):
+    if not url or not isinstance(url, str):
+        print("Invalid URL provided.")
+        return None
+
     if cmd is None:
         cmd = ""
 
     if "akstechnicalclasses" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-    elif "appxsignurl.vercel.app/appx/" in url or "appx.co.in" in url or "encrypted.m" in url:
+    elif any(x in url for x in ["appxsignurl.vercel.app/appx/", "appx.co.in", "encrypted.m"]):
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
 
     video_path = await download_video(url, cmd, name)
 
-    if video_path:
-        decrypted = decrypt_file(video_path, key)
-        if decrypted:
-            print(f"File {video_path} decrypted successfully.")
-            return video_path
-        else:
-            print(f"Failed to decrypt {video_path}.")
-            return None
+    if not video_path or video_path == "None":
+        print("Video download failed or returned None.")
+        return None
+
+    decrypted = decrypt_file(video_path, key)
+    if decrypted:
+        print(f"File {video_path} decrypted successfully.")
+        return video_path
     else:
-        print("Video download failed.")
+        print(f"Failed to decrypt {video_path}.")
         return None
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
