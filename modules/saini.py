@@ -291,14 +291,17 @@ import asyncio
 
 import asyncio
 
-async def downloadanddecrypt_video(url, cmd, name, key):
+import os
+
+
+async def download_and_decrypt_video(url, cmd, name, key):
     if "appx.co.in" in url:
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
 
-    videopath = await downloadvideo(url, cmd, name)
+    video_path = await download_video(url, cmd, name)
 
     if video_path:
-        decrypted = decryptfile(videopath, key)
+        decrypted = decrypt_file(video_path, key)
         if decrypted:
             print(f"File {video_path} decrypted successfully.")
             return video_path
@@ -308,7 +311,6 @@ async def downloadanddecrypt_video(url, cmd, name, key):
     else:
         print("Video download failed.")
         return None
-
 
 
     
