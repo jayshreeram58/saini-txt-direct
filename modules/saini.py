@@ -298,24 +298,24 @@ async def download_video(url,cmd, name):
 
         
 async def download_and_decrypt_video(url, cmd, name, key):
-    # 1. COMMAND CLEANING
-    # Aapke cmd mein agar 'yt-dlp' pehle se hai, toh use saaf karna zaroori hai
-    clean_cmd = cmd.replace("yt-dlp", "").strip()
+    import subprocess
+    import os
+
+    # 1. Base Name Setup (Aapka clean filename)
+    base_name = name.split(".")[0].strip()
     
-    # 2. REFERER LOGIC (AKS Technical Classes Fix)
-    # 1DM screenshot ke mutabiq exact referer
+    # 2. REFERER LOGIC (1DM Screenshot ke mutabiq exact setup)
     if "akstechnicalclasses" in url or "classx.co.in" in url:
         referer = "https://akstechnicalclasses.classx.co.in/"
     else:
         referer = "https://player.akamai.net.in/"
     
-    # 3. FILENAME SETUP
-    # Extension %(ext)s pe chhodna hai taaki yt-dlp conflict na kare
-    base_name = name.split(".")[0].strip()
-    
+    # 3. Clean CMD (Double 'yt-dlp' word error fix)
+    clean_cmd = cmd.replace("yt-dlp", "").strip()
+
     # 4. FINAL COMMAND FORMATION
-    # URL ko quotes "" mein dala hai taaki Signature (&) break na ho
-    # 
+    # Yahan humne %(ext)s rakha hai taki yt-dlp server se milne wale .mkv ko bina merge error ke download kare
+    # URL ko quotes "" mein rakha hai taki Signature (&) break na ho
     final_cmd = (
         f'yt-dlp "{url}" '
         f'--add-header "Referer:{referer}" '
@@ -326,44 +326,42 @@ async def download_and_decrypt_video(url, cmd, name, key):
         '--external-downloader aria2c --downloader-args "aria2c:-x 16 -j 32"'
     )
 
-    print(f"DEBUG: Running Command -> {final_cmd}")
+    print(f"🚀 Starting Download: {base_name}")
     
-    # 5. EXECUTION
-    import subprocess
-    import os
-    
-    # Download shuru
-    result = subprocess.run(final_cmd, shell=True)
-    
-    # 6. DYNAMIC FILE SEARCH (More than one file error ka solution)
-    # Download ke baad check karna ki yt-dlp ne kaunsi file banayi hai
+    # 5. EXECUTION (Download Start)
+    subprocess.run(final_cmd, shell=True)
+
+    # 6. DYNAMIC FILE SEARCH (Extension checking logic)
+    # 
     video_path = None
+    # Server mkv de ya mp4, hum dhoondh nikalenge
     for ext in [".mkv", ".mp4", ".ts", ".webm"]:
-        potential_path = f"{base_name}{ext}"
-        if os.path.exists(potential_path):
-            video_path = potential_path
+        potential_file = f"{base_name}{ext}"
+        if os.path.exists(potential_file):
+            video_path = potential_file
             break
-            
+
     # 7. DECRYPTION (Download ke turant baad)
     if video_path:
-        print(f"✅ Download Complete: {video_path}")
+        print(f"✅ Download Finished: {video_path}")
         
-        # Key bytes handling
+        # Key string hai toh bytes mein convert karein
         key_bytes = key.encode() if isinstance(key, str) else key
         
-        # Aapka original decrypt function
+        # Decrypt call (Aapka original function)
         decrypted_path = decrypt_file(video_path, key_bytes)
         
         if decrypted_path:
-            print(f"🔓 Decryption Success!")
-            return video_path
+            print(f"🔓 Decrypted Successfully: {decrypted_path}")
+            return decrypted_path
         else:
             print("❌ Decryption failed.")
             return None
     else:
-        print("❌ Error: Download failed. Check Referer or Link Expiry.")
+        # Agar yahan tak aaya matlab 403 error ya network issue hai
+        print("❌ Error: Download fail ho gaya. Link expire ho sakti hai.")
         return None
-        
+
     
         
         
