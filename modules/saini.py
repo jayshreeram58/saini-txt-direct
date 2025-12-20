@@ -238,18 +238,23 @@ async def download_video(url, cmd, name):
     global failed_counter
     print(download_cmd)
     logging.info(download_cmd)
+
     k = subprocess.run(download_cmd, shell=True)
+
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
-        await download_video(url, cmd, name)
+        return await download_video(url, cmd, name)
+
     failed_counter = 0
     try:
         if os.path.isfile(name):
             return name
         elif os.path.isfile(f"{name}.webm"):
             return f"{name}.webm"
+
         name = name.split(".")[0]
+
         if os.path.isfile(f"{name}.mkv"):
             return f"{name}.mkv"
         elif os.path.isfile(f"{name}.mp4"):
@@ -259,9 +264,8 @@ async def download_video(url, cmd, name):
 
         return name
     except FileNotFoundError as exc:
-        print(f"Error: {exc}")   # error print karega
+        print(f"Error: {exc}")
         return f"{os.path.splitext(name)[0]}.mp4"
-
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
     reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
     time.sleep(1)
@@ -300,7 +304,6 @@ async def download_and_decrypt_video(url, cmd, name, key):
 
     video_path = await download_video(url, cmd, name)
 
-    # Ensure we got a valid file path before decrypting
     if video_path and os.path.isfile(video_path):
         decrypted = decrypt_file(video_path, key)
         if decrypted:
