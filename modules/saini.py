@@ -276,7 +276,7 @@ async def download_video(url,cmd, name):
         elif os.path.isfile(f"{name}.mp4.webm"):
             return f"{name}.mp4.webm"
 
-  import os
+import os
 import mmap
 
 def decrypt_file(file_path, key: bytes):
