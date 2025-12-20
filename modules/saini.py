@@ -233,6 +233,13 @@ def time_name():
     return f"{date} {current_time}.mp4"
 
 
+import os
+import asyncio
+import subprocess
+import logging
+
+failed_counter = 0
+
 async def download_video(url, cmd, name):
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
@@ -253,19 +260,41 @@ async def download_video(url, cmd, name):
         elif os.path.isfile(f"{name}.webm"):
             return f"{name}.webm"
 
-        name = name.split(".")[0]
-
-        if os.path.isfile(f"{name}.mkv"):
-            return f"{name}.mkv"
-        elif os.path.isfile(f"{name}.mp4"):
-            return f"{name}.mp4"
-        elif os.path.isfile(f"{name}.mp4.webm"):
-            return f"{name}.mp4.webm"
+        base = name.split(".")[0]
+        if os.path.isfile(f"{base}.mkv"):
+            return f"{base}.mkv"
+        elif os.path.isfile(f"{base}.mp4"):
+            return f"{base}.mp4"
+        elif os.path.isfile(f"{base}.mp4.webm"):
+            return f"{base}.mp4.webm"
 
         return name
     except FileNotFoundError as exc:
         print(f"Error: {exc}")
         return f"{os.path.splitext(name)[0]}.mp4"
+
+
+async def download_and_decrypt_video(url, cmd, name, key):
+    if "appx.co.in" in url:
+        # Referer required; avoid forcing unavailable formats; prefer HLS joining via ffmpeg; merge to mp4
+        cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
+        cmd += " --hls-prefer-ffmpeg --merge-output-format mp4"
+        # Optional: if you previously added `-f ...` and it caused errors, remove it from cmd.
+        # Keep it minimal and predictable. If you want to force, use: cmd += " -f best"
+
+    video_path = await download_video(url, cmd, name)
+
+    if video_path and os.path.isfile(video_path):
+        decrypted = decrypt_file(video_path, key)
+        if decrypted:
+            print(f"File {video_path} decrypted successfully.")
+            return video_path
+        else:
+            print(f"Failed to decrypt {video_path}.")
+            return None
+    else:
+        print("Video download failed or file not found.")
+        return None
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
     reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
     time.sleep(1)
@@ -298,23 +327,6 @@ import asyncio
 import os
 
 
-async def download_and_decrypt_video(url, cmd, name, key):
-    if "appx.co.in" in url:
-        cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-
-    video_path = await download_video(url, cmd, name)
-
-    if video_path and os.path.isfile(video_path):
-        decrypted = decrypt_file(video_path, key)
-        if decrypted:
-            print(f"File {video_path} decrypted successfully.")
-            return video_path
-        else:
-            print(f"Failed to decrypt {video_path}.")
-            return None
-    else:
-        print("Video download failed or file not found.")
-        return None
 
 
     
