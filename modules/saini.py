@@ -302,42 +302,34 @@ async def download_video(url, cmd, name):
             return candidate
 
     return None
-async def download_video(url, cmd, name):
+async def download_video(url,cmd, name):
+    download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
-    # Name se extension hata kar clean base name lena
-    base_name = os.path.splitext(name)[0]
-
-    # Proper yt-dlp command with quotes around URL and Output
-    # Isse "More than one file to download" wala error solve ho jayega
-    download_cmd = (
-        f'yt-dlp "{url}" -o "{base_name}.%(ext)s" {cmd} '
-        '-R 25 --fragment-retries 25 '
-        '--external-downloader aria2c '
-        '--downloader-args "aria2c: -x 16 -j 32"'
-    )
-
-    print(f"Executing: {download_cmd}")
+    print(download_cmd)
     logging.info(download_cmd)
-
-    # Subprocess call (Aapka original subprocess.run)
     k = subprocess.run(download_cmd, shell=True)
-
-    # Retry logic (VisionIAS)
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
-        return await download_video(url, cmd, base_name)
-
+        await download_video(url, cmd, name)
     failed_counter = 0
+    try:
+        if os.path.isfile(name):
+            return name
+        elif os.path.isfile(f"{name}.webm"):
+            return f"{name}.webm"
+        name = name.split(".")[0]
+        if os.path.isfile(f"{name}.mkv"):
+            return f"{name}.mkv"
+        elif os.path.isfile(f"{name}.mp4"):
+            return f"{name}.mp4"
+        elif os.path.isfile(f"{name}.mp4.webm"):
+            return f"{name}.mp4.webm"
 
-    # Downloaded file check
-    for ext in [".mp4", ".mkv", ".webm", ".ts"]:
-        candidate = f"{base_name}{ext}"
-        if os.path.isfile(candidate):
-            return candidate
-
-    return None
-    
+        return name
+    except FileNotFoundError as exc:
+        return os.path.isfile.splitext[0] + "." + "mp4"
+        
 
 
 async def download_and_decrypt_video(url, cmd, name, key: bytes):
