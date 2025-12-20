@@ -272,18 +272,37 @@ async def download_video(url, cmd, name):
     except FileNotFoundError as exc:
         print(f"Error: {exc}")
         return f"{os.path.splitext(name)[0]}.mp4"
+import subprocess
+import os
+
+async def download_with_1dm_style(url, name):
+    """
+    1DM-style download: use ffmpeg directly with referer header to grab HLS stream and save as mp4.
+    """
+    output_file = f"{name}.mp4"
+    cmd = [
+        "ffmpeg",
+        "-headers", "Referer: https://akstechnicalclasses.classx.co.in/",
+        "-i", url,
+        "-c", "copy",
+        "-bsf:a", "aac_adtstoasc",
+        output_file
+    ]
+
+    print("Running:", " ".join(cmd))
+    result = subprocess.run(cmd)
+
+    if result.returncode == 0 and os.path.isfile(output_file):
+        return output_file
+    else:
+        print("1DM-style download failed.")
+        return None
 
 
 async def download_and_decrypt_video(url, cmd, name, key):
-    if "appx.co.in" in url:
-        # 1DM style: inject referer + prefer ffmpeg for HLS + merge to mp4
-        cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
-        cmd += " --hls-prefer-ffmpeg --merge-output-format mp4"
+    # Instead of calling download_video, use the new 1DM-style downloader
+    video_path = await download_with_1dm_style(url, name)
 
-    # call your existing download_video (unchanged)
-    video_path = await download_video(url, cmd, name)
-
-    # 1DM style: final file expected as mp4
     if video_path and os.path.isfile(video_path):
         decrypted = decrypt_file(video_path, key)
         if decrypted:
