@@ -291,37 +291,23 @@ import asyncio
 
 import asyncio
 
-async def download_and_decrypt_video(url, cmd, name, key):
-    try:
-        # Always use this referer for all downloads
-        referer = "https://akstechnicalclasses.classx.co.in/"
+async def downloadanddecrypt_video(url, cmd, name, key):
+    if "appx.co.in" in url:
+        cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
 
-        # Build yt-dlp command with aria2c and referer header
-        cmd = (
-            f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c '
-            f'--downloader-args "aria2c:-x 16 -j 32 --header=\'Referer: {referer}\'"'
-        )
+    videopath = await downloadvideo(url, cmd, name)
 
-        # Download the video
-        video_path = await download_video(url, cmd, name)
-
-        if not video_path:
-            print(f"[ERROR] Download failed for URL: {url}")
-            return None
-
-        # Decrypt the file
-        decrypted = decrypt_file(video_path, key)
+    if video_path:
+        decrypted = decryptfile(videopath, key)
         if decrypted:
-            print(f"[SUCCESS] File {video_path} decrypted successfully.")
+            print(f"File {video_path} decrypted successfully.")
             return video_path
         else:
-            print(f"[ERROR] Failed to decrypt {video_path}.")
+            print(f"Failed to decrypt {video_path}.")
             return None
-
-    except Exception as e:
-        print(f"[EXCEPTION] Unexpected error in download_and_decrypt_video: {e}")
+    else:
+        print("Video download failed.")
         return None
-
 
 
 
