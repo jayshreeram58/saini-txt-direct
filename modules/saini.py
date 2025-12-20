@@ -236,40 +236,6 @@ def time_name():
 import subprocess, os, asyncio, logging
 failed_counter = 0
 
-async def download_video(url, cmd, name):
-    global failed_counter
-
-    # Sanitize name (remove extension if present)
-    base_name = os.path.splitext(name)[0]
-
-    # Proper yt-dlp command with output template
-    download_cmd = (
-        f'yt-dlp "{url}" -o "{base_name}.%(ext)s" {cmd} '
-        '-R 25 --fragment-retries 25 '
-        '--external-downloader aria2c '
-        '--downloader-args "aria2c: -x 16 -j 32"'
-    )
-
-    print(download_cmd)
-    logging.info(download_cmd)
-
-    k = subprocess.run(download_cmd, shell=True)
-
-    # Retry logic
-    if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
-        failed_counter += 1
-        await asyncio.sleep(5)
-        return await download_video(url, cmd, base_name)
-
-    failed_counter = 0
-
-    # Check for downloaded file
-    for ext in [".mp4", ".mkv", ".webm"]:
-        candidate = base_name + ext
-        if os.path.isfile(candidate):
-            return candidate
-
-    return None
 
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
     reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
@@ -301,27 +267,104 @@ def decrypt_file(file_path, key: bytes):
     return file_path
 
 
+async def download_video(url, cmd, name):
+    global failed_counter
+    # Name se extension hata kar clean base name lena
+    base_name = os.path.splitext(name)[0]
 
+    # Proper yt-dlp command with quotes around URL and Output
+    # Isse "More than one file to download" wala error solve ho jayega
+    download_cmd = (
+        f'yt-dlp "{url}" -o "{base_name}.%(ext)s" {cmd} '
+        '-R 25 --fragment-retries 25 '
+        '--external-downloader aria2c '
+        '--downloader-args "aria2c: -x 16 -j 32"'
+    )
+
+    print(f"Executing: {download_cmd}")
+    logging.info(download_cmd)
+
+    # Subprocess call (Aapka original subprocess.run)
+    k = subprocess.run(download_cmd, shell=True)
+
+    # Retry logic (VisionIAS)
+    if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
+        failed_counter += 1
+        await asyncio.sleep(5)
+        return await download_video(url, cmd, base_name)
+
+    failed_counter = 0
+
+    # Downloaded file check
+    for ext in [".mp4", ".mkv", ".webm", ".ts"]:
+        candidate = f"{base_name}{ext}"
+        if os.path.isfile(candidate):
+            return candidate
+
+    return None
+async def download_video(url, cmd, name):
+    global failed_counter
+    # Name se extension hata kar clean base name lena
+    base_name = os.path.splitext(name)[0]
+
+    # Proper yt-dlp command with quotes around URL and Output
+    # Isse "More than one file to download" wala error solve ho jayega
+    download_cmd = (
+        f'yt-dlp "{url}" -o "{base_name}.%(ext)s" {cmd} '
+        '-R 25 --fragment-retries 25 '
+        '--external-downloader aria2c '
+        '--downloader-args "aria2c: -x 16 -j 32"'
+    )
+
+    print(f"Executing: {download_cmd}")
+    logging.info(download_cmd)
+
+    # Subprocess call (Aapka original subprocess.run)
+    k = subprocess.run(download_cmd, shell=True)
+
+    # Retry logic (VisionIAS)
+    if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
+        failed_counter += 1
+        await asyncio.sleep(5)
+        return await download_video(url, cmd, base_name)
+
+    failed_counter = 0
+
+    # Downloaded file check
+    for ext in [".mp4", ".mkv", ".webm", ".ts"]:
+        candidate = f"{base_name}{ext}"
+        if os.path.isfile(candidate):
+            return candidate
+
+    return None
+    
 
 
 async def download_and_decrypt_video(url, cmd, name, key: bytes):
+    # 1. Referer Logic Fix for AKS and Appx
     if "akstechnicalclasses" in url or "appx.co.in" in url:
+        # AKS ke liye strict referer
         cmd += ' --add-header "Referer: https://akstechnicalclasses.classx.co.in/"'
     elif "appx" in url or "encrypted.m" in url or "dragoapi.vercel.app" in url:
         cmd += ' --add-header "Referer: https://player.akamai.net.in/"'
 
+    # 2. Video Download call
     video_path = await download_video(url, cmd, name)
+    
     if not video_path:
         print("Video download failed.")
         return None
 
+    # 3. Decrypt call
     decrypted_path = decrypt_file(video_path, key)
+    
     if decrypted_path:
         print(f"File {decrypted_path} decrypted successfully.")
         return decrypted_path
     else:
         print(f"Failed to decrypt {video_path}.")
         return None
+
 
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
