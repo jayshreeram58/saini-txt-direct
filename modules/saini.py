@@ -233,25 +233,6 @@ def time_name():
     return f"{date} {current_time}.mp4"
 
 
-import subprocess, os, asyncio, logging
-failed_counter = 0
-
-
-async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
-    reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
-    time.sleep(1)
-    start_time = time.time()
-    await bot.send_document(ka, caption=cc1)
-    count+=1
-    await reply.delete (True)
-    time.sleep(1)
-    os.remove(ka)
-    time.sleep(3) 
-
-
-
-
-
 async def download_video(url,cmd, name):
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
@@ -276,93 +257,75 @@ async def download_video(url,cmd, name):
         elif os.path.isfile(f"{name}.mp4.webm"):
             return f"{name}.mp4.webm"
 
+        return name
+    except FileNotFoundError as exc:
+        return os.path.isfile.splitext[0] + "." + "mp4"
 
 
-def decrypt_file(file_path, key: bytes):
-    if not os.path.exists(file_path):
-        print(f"❌ File not found: {file_path}")
-        return None
+async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
+    reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
+    time.sleep(1)
+    start_time = time.time()
+    await bot.send_document(ka, caption=cc1)
+    count+=1
+    await reply.delete (True)
+    time.sleep(1)
+    os.remove(ka)
+    time.sleep(3) 
 
-    try:
-        with open(file_path, "r+b") as f:
-            num_bytes = min(28, os.path.getsize(file_path))
-            with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
-                for i in range(num_bytes):
-                    mmapped_file[i] ^= key[i] if i < len(key) else i
-        return file_path
-    except Exception as e:
-        print(f"❌ Decryption error: {e}")
-        return None      
 
-        
+def decrypt_file(file_path, key):  
+    if not os.path.exists(file_path): 
+        return False  
 
+    with open(file_path, "r+b") as f:  
+        num_bytes = min(28, os.path.getsize(file_path))  
+        with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:  
+            for i in range(num_bytes):  
+                mmapped_file[i] ^= ord(key[i]) if i < len(key) else i 
+    return True  
+
+import asyncio
 
 async def download_and_decrypt_video(url, cmd, name, key):
-    base_name = name.split(".")[0].strip()
-
-    # 1. Referer logic
-    referer = (
-        "https://akstechnicalclasses.classx.co.in/"
-        if "akstechnicalclasses" in url
-        else "https://player.akamai.net.in/"
-    )
-
-    # 2. Clean cmd
-    clean_cmd = cmd.replace("yt-dlp", "").strip()
-
-    # 3. Final yt-dlp command
-    final_cmd = (
-        f'yt-dlp "{url}" '
-        f'--add-header "Referer:{referer}" '
-        f'--user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" '
-        f'-o "{base_name}.%(ext)s" '
-        f'{clean_cmd} '
-        '--no-playlist --force-generic-extractor '
-        '--no-part --no-check-certificate --fixup never '
-        '-R 25 --fragment-retries 25'
-    )
-
-    print(f"🚀 Downloading: {base_name} ... Please wait.")
-    print(f"▶️ CMD: {final_cmd}")
-
-    try:
-        subprocess.run(final_cmd, shell=True, check=True)
-    except Exception as e:
-        print(f"❌ Download Command Error: {e}")
-        return None
-
-    # 4. Find downloaded file
-    video_path = None
-    for ext in [".mkv", ".mp4", ".ts", ".webm"]:
-        potential_file = f"{base_name}{ext}"
-        if os.path.exists(potential_file):
-            video_path = potential_file
-            break
-
-    if not video_path:
-        print("❌ Error: Download failed or file not found.")
-        return None
-
-    print(f"✅ Found File: {video_path}. Now Decrypting...")
-
-    # 5. Decrypt
-    key_bytes = key.encode() if isinstance(key, str) else key
-    decrypted_path = decrypt_file(video_path, key_bytes)
-
-    if decrypted_path:
-        print(f"🔓 Success: File ready → {decrypted_path}")
-        return decrypted_path
+    # AppX URLs require referer header
+    if "appx" in url:
+        video_path = await download_video_referer(
+            url, cmd, name, referer="https://akstechnicalclasses.classx.co.in/"
+        )
     else:
-        print("❌ Decryption failed. Check key or file.")
+        video_path = await download_video(url, cmd, name)  # tumhara existing function
+
+    if video_path:
+        decrypted = decrypt_file(video_path, key)
+        if decrypted:
+            print(f"File {video_path} decrypted successfully.")
+            return video_path
+        else:
+            print(f"Failed to decrypt {video_path}.")
+            return None
+
+
+async def download_video_referer(url, cmd, name, referer):
+    # AppX download with referer header
+    download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c ' \
+                   f'--downloader-args "aria2c: -x 16 -j 32 --header Referer:{referer}" ' \
+                   f'-o "{name}.mp4" "{url}"'
+
+    process = await asyncio.create_subprocess_shell(
+        download_cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+
+    if process.returncode == 0:
+        print(f"Downloaded {name}.mp4 with referer {referer}")
+        return f"{name}.mp4"
+    else:
+        print(f"Failed to download {url} with referer {referer}")
+        print(stderr.decode())
         return None
-
-
-        
-        
-        
-
-
-
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
     subprocess.run(f'ffmpeg -i "{filename}" -ss 00:00:10 -vframes 1 "{filename}.jpg"', shell=True)
     await prog.delete (True)
