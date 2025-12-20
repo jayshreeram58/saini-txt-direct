@@ -301,71 +301,76 @@ import subprocess
 import os
 import asyncio
 
+import subprocess
+import os
+import asyncio
+
 async def download_and_decrypt_video(url, cmd, name, key):
-    # 1. Base Name Setup (001)
+    # 1. Base Name Setup (e.g., 001)
     base_name = name.split(".")[0].strip()
     
-    # 2. Referer Setup (Strict for AKS as per your 1DM)
+    # 2. Referer Fix (Strictly as per your 1DM screenshot)
     if "akstechnicalclasses" in url:
         referer = "https://akstechnicalclasses.classx.co.in/"
     else:
         referer = "https://player.akamai.net.in/"
     
-    # 3. CMD Clean (yt-dlp double word hatao)
+    # 3. Clean CMD (yt-dlp word double hone se bachne ke liye)
     clean_cmd = cmd.replace("yt-dlp", "").strip()
 
-    # 4. Final Bullet-Proof Command
-    # 
-    # Yahan "%(ext)s" zaroori hai taki mkv vs mp4 ka jhanjhat khatam ho jaye
+    # 4. FINAL BULLET-PROOF COMMAND
+    # - Aria2c hata diya hai kyunki wo 403 error de raha hai.
+    # - %(ext)s rakha hai taaki server wali asli extension (.mkv) save ho.
+    # - URL ko hamesha quotes "" mein rakha hai.
     final_cmd = (
         f'yt-dlp "{url}" '
         f'--add-header "Referer:{referer}" '
         f'--user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" '
         f'-o "{base_name}.%(ext)s" '
         f'{clean_cmd} '
-        '--no-part --no-check-certificate --fixup never '
-        '-R 25 --fragment-retries 25 '
-        '--external-downloader aria2c --downloader-args "aria2c:-x 16 -j 32"'
+        '--no-part --no-check-certificate --fixup never -R 25 --fragment-retries 25'
     )
 
-    print(f"🚀 Integrated Download Start: {base_name}")
+    print(f"🚀 Downloading: {base_name} ... Please wait.")
     
     # 5. Execution
     try:
-        # shell=True zaroori hai quotes handle karne ke liye
+        # Direct yt-dlp download
         subprocess.run(final_cmd, shell=True, check=True)
     except Exception as e:
-        print(f"❌ Subprocess error: {e}")
+        print(f"❌ Download Command Error: {e}")
 
-    # 6. DYNAMIC FILE SEARCH (Extension logic)
+    # 6. DYNAMIC FILE SEARCH (Asli file dhoondhna)
     # 
     video_path = None
-    # Server mkv dega toh .mkv dhoondhega, mp4 dega toh .mp4
+    # Server .mkv dega toh ye loop use dhoondh lega
     for ext in [".mkv", ".mp4", ".ts", ".webm"]:
         potential_file = f"{base_name}{ext}"
         if os.path.exists(potential_file):
             video_path = potential_file
             break
 
-    # 7. DECRYPTION (Download ke baad turant)
+    # 7. DECRYPTION (Download hone ke baad)
     if video_path:
-        print(f"✅ Found File: {video_path}")
+        print(f"✅ Found File: {video_path}. Now Decrypting...")
         
         # Key string hai toh bytes mein convert karein
         key_bytes = key.encode() if isinstance(key, str) else key
         
-        # Aapka original decrypt function call karein
+        # Aapka original decrypt function call
         decrypted_path = decrypt_file(video_path, key_bytes)
         
         if decrypted_path:
-            print(f"🔓 Success: Decrypted {decrypted_path}")
+            print(f"🔓 Success: File is ready!")
             return decrypted_path
         else:
-            print("❌ Decryption failed.")
+            print("❌ Decryption failed. Key check karein.")
             return None
     else:
-        print("❌ Error: Download failed (403 Forbidden or Link Expired).")
+        # Yahan tabhi aayega jab download fail ho
+        print("❌ Error: Download fail ho gaya. Link shayad expire ho gayi hai.")
         return None
+
         
         
         
