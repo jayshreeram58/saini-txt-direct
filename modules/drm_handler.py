@@ -364,30 +364,22 @@ async def drm_handler(bot: Client, m: Message):
 
             #elif "d1d34p8vz63oiq" in url or "sec1.pw.live" in url:
             elif "childId" in url and "parentId" in url:
-                url = f"https://anonymouspwplayer-25261acd1521.herokuapp.com/pw?url={url}&token={raw_text4}"
+                url = f"https://anonymouspwplayer.rarestudy.site/pw?url={url}&token={raw_text4}"
+                
+            elif "dragoapi.vercel.app" in url:
+    # Step 1: Hit the URL (it auto-redirects to real HLS)
+             r = requests.get(url, timeout=10, allow_redirects=True)
+
+    # Step 2: Final resolved URL
+             final_url = r.url
+
+    # Step 3: Store directly in url for downloading
+             url = final_url.strip()
                            
             elif 'encrypted.m' in url:
                 appxkey = url.split('*')[1]
                 url = url.split('*')[0]
-            elif "dragoapi.vercel.app" in url and "*" in url and url.strip().endswith(".mkv"):
-    # Split into base URL and key
-             parts = url.split("*", 1)
-             if len(parts) == 2:
-              base_url = parts[0].strip()
-              appxkey = parts[1].strip()
-
-        # Step 1: Hit the base_url (without *key) to get the redirect/final link
-              response = requests.get(base_url, timeout=10, allow_redirects=True)
-              final_url = response.url.strip()  # resolved CDN link
-
-        # Step 2: Overwrite url with the resolved link
-              url = final_url
-
-              print(f"Resolved URL: {url}")
-              print(f"AppxKey: {appxkey}")
-             else:
-              print("Invalid dragoapi URL format.")
-              url, appxkey = None, None
+            
             elif ".m3u8" in url and "appx" in url:
              r = requests.get(url, timeout=10)
              data_json = r.json()
@@ -412,18 +404,8 @@ async def drm_handler(bot: Client, m: Message):
 
   
                 
-            elif "dragoapi.vercel.app" in url or url.endswith(".m3u8"):
-    # Step 1: Hit the URL (it auto-redirects to real HLS)
-             r = requests.get(url, timeout=10, allow_redirects=True)
+            
 
-    # Step 2: Final resolved URL
-             final_url = r.url
-
-    # Step 3: Store directly in url for downloading
-             url = final_url.strip()
-
-    # Step 4: No referer needed for this pattern
-             need_referer = False
 
             if "youtu" in url:
              ytf = youtube_format(raw_text2)
@@ -697,7 +679,37 @@ async def drm_handler(bot: Client, m: Message):
                     Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>" 
                     prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
                     prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
-                    res_file = helper.download_and_decrypt_video(url, namef, appxkey)  
+                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)  
+                    filename = res_file  
+                    await prog1.delete(True)
+                    await prog.delete(True)
+                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    count += 1  
+                    await asyncio.sleep(1)  
+                    continue  
+
+                elif "dragoapi.vercel.app" in url:
+                    remaining_links = len(links) - count
+                    progress = (count / len(links)) * 100
+                    Show1 = f"<blockquote>🚀𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬 » {progress:.2f}%</blockquote>\n┃\n" \
+                           f"┣🔗𝐈𝐧𝐝𝐞𝐱 » {count}/{len(links)}\n┃\n" \
+                           f"╰━🖇️𝐑𝐞𝐦𝐚𝐢𝐧 » {remaining_links}\n" \
+                           f"━━━━━━━━━━━━━━━━━━━━━━━━\n" \
+                           f"<blockquote><b>⚡Dᴏᴡɴʟᴏᴀᴅɪɴɢ Eɴᴄʀʏᴘᴛᴇᴅ Sᴛᴀʀᴛᴇᴅ...⏳</b></blockquote>\n┃\n" \
+                           f'┣💃𝐂𝐫𝐞𝐝𝐢𝐭 » {CR}\n┃\n' \
+                           f"╰━📚𝐁𝐚𝐭𝐜𝐡 » {b_name}\n" \
+                           f"━━━━━━━━━━━━━━━━━━━━━━━━━\n" \
+                           f"<blockquote>📚𝐓𝐢𝐭𝐥𝐞 » {namef}</blockquote>\n┃\n" \
+                           f"┣🍁𝐐𝐮𝐚𝐥𝐢𝐭𝐲 » {quality}\n┃\n" \
+                           f'┣━🔗𝐋𝐢𝐧𝐤 » <a href="{link0}">**Original Link**</a>\n┃\n' \
+                           f'╰━━🖇️𝐔𝐫𝐥 » <a href="{url}">**Api Link**</a>\n' \
+                           f"━━━━━━━━━━━━━━━━━━━━━━━━━\n" \
+                           f"🛑**Send** /stop **to stop process**\n┃\n" \
+                           f"╰━✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
+                    Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>" 
+                    prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
+                    prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
+                    res_file = await helper.download_asia_video(url,  name)  
                     filename = res_file  
                     await prog1.delete(True)
                     await prog.delete(True)
