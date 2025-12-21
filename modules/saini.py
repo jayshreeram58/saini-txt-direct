@@ -394,7 +394,7 @@ async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, chan
     time.sleep(1)
     start_time = time.time()
     await bot.send_document(ka, caption=cc1)
-    count+=1l
+    count+=1
     await reply.delete (True)
     time.sleep(1)
     os.remove(ka)
