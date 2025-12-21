@@ -283,6 +283,9 @@ import os
 import requests
 import os
 from tqdm import tqdm
+import os
+import requests
+from tqdm import tqdm  # progress bar
 
 def download_raw_file(url, filename):
     headers = {
@@ -297,11 +300,10 @@ def download_raw_file(url, filename):
 
     try:
         with requests.get(url, headers=headers, stream=True, timeout=30) as r:
-            r.raise_for_status()  # HTTP errors will raise exception
+            r.raise_for_status()  # HTTP errors raise exception
             total_size = int(r.headers.get('content-length', 0))
             chunk_size = 1024 * 1024  # 1 MB
 
-            # tqdm progress bar
             with open(file_path, "wb") as f, tqdm(
                 total=total_size, unit='B', unit_scale=True, desc=filename, ncols=80
             ) as pbar:
@@ -317,8 +319,9 @@ def download_raw_file(url, filename):
         print(f"\n❌ Download failed: {e}")
         return None
 
-def download_and_decrypt_video(url, name, key):
-    video_path = download_raw_file(url, name)  # normal call
+
+def download_and_decrypt_video(url, name, key, cmd=None):
+    video_path = download_raw_file(url, name)
 
     if video_path and os.path.isfile(video_path):
         decrypted = decrypt_file(video_path, key)
