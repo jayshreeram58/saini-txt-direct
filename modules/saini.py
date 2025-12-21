@@ -303,7 +303,7 @@ async def download_and_decrypt_video(url, cmd, name, key):
     # Instead of calling download_video, use the new 1DM-style downloader
     video_path = await download_raw_file(url, name):
 
-    if video_path and os.path.isfile(video_path):
+    if video_path and os.path.isfile(video_path)
         decrypted = decrypt_file(video_path, key)
         if decrypted:
             print(f"File {video_path} decrypted successfully.")
