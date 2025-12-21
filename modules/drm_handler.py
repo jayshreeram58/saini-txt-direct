@@ -363,31 +363,29 @@ async def drm_handler(bot: Client, m: Message):
                 url = url.split("bcov_auth")[0]+bcov
 
             #elif "d1d34p8vz63oiq" in url or "sec1.pw.live" in url:
-            elif "childId" in url and "parentId" in url:
-                url = f"https://anonymouspwplayer-25261acd1521.herokuapp.com/pw?url={url}&token={raw_text4}"
-                           
-            elif 'encrypted.m' in url:
-                appxkey = url.split('*')[1]
-                url = url.split('*')[0]
-            elif "dragoapi.vercel.app" in url and "*" in url and url.strip().endswith(".mkv"):
+            elif "dragoapi.vercel.app" in url and "*" in url :
     # Split into base URL and key
              parts = url.split("*", 1)
              if len(parts) == 2:
               base_url = parts[0].strip()
-              appxkey = parts[1].strip()
-
-        # Step 1: Hit the base_url (without *key) to get the redirect/final link
+              appxkey = parts[1].strip()   # e.g. 8822682
               response = requests.get(base_url, timeout=10, allow_redirects=True)
               final_url = response.url.strip()  # resolved CDN link
 
         # Step 2: Overwrite url with the resolved link
               url = final_url
+              print(f"⚡ DragoAPI link detected → base_url={base_url}, appxkey={appxkey}")
 
-              print(f"Resolved URL: {url}")
-              print(f"AppxKey: {appxkey}")
-             else:
-              print("Invalid dragoapi URL format.")
-              url, appxkey = None, None
+            elif "childId" in url and "parentId" in url:
+                url = f"https://anonymouspwplayer-25261acd1521.herokuapp.com/pw?url={url}&token={raw_text4}"
+                           
+            elif 'encrypted.m' in url:
+                 appxkey = url.split('*')[1]
+                 url = url.split('*')[0]
+            
+
+            
+            
             elif ".m3u8" in url and "appx" in url:
              r = requests.get(url, timeout=10)
              data_json = r.json()
@@ -708,7 +706,11 @@ async def drm_handler(bot: Client, m: Message):
                     await asyncio.sleep(1)  
                     continue  
                     
-                elif (".m3u8" in url and "appx" in url) or "encrypted.m" in url or "appxsignurl.vercel.app/appx/" in url:    
+                elif (".m3u8" in url and "appx" in url) \
+                    or "encrypted.m" in url \
+                    or "appxsignurl.vercel.app/appx/" in url \
+                    or ("dragoapi.vercel.app" in url and "*" in url):
+    # handle appx/encrypted/appxsignurl/dragoapi with *key
                     remaining_links = len(links) - count
                     progress = (count / len(links)) * 100
                     Show1 = f"<blockquote>🚀𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬 » {progress:.2f}%</blockquote>\n┃\n" \
