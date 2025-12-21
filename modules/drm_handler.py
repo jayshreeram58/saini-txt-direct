@@ -697,7 +697,7 @@ async def drm_handler(bot: Client, m: Message):
                     Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>" 
                     prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
                     prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
-                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)  
+                    res_file = helper.download_and_decrypt_video(url, namef, appxkey)  
                     filename = res_file  
                     await prog1.delete(True)
                     await prog.delete(True)
