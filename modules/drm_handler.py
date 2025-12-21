@@ -544,7 +544,10 @@ async def drm_handler(bot: Client, m: Message):
                            
                            need_referer = True
                            namef = name1
-
+                    elif "static-db-v2.appx.co.in" in url:
+                           
+                           need_referer = True
+                           namef = name1
 
                     elif "static-db-v2.appx.co.in" in url:
                         filename = urlparse(url).path.split("/")[-1]
