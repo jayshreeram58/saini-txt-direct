@@ -275,32 +275,33 @@ async def download_video(url, cmd, name):
 import subprocess
 import os
 
+import subprocess
+import os
 
-async def downloadwith1dm_style(url, name):
+async def download_raw_file(url, name):
     output_file = f"{name}.mkv"
 
     cmd = [
-        "ffmpeg",
-        "-user_agent", "Mozilla/5.0 (Linux; Android 13)",
-        "-headers",
-        "Referer: https://akstechnicalclasses.classx.co.in/\r\n",
-        "-i", url,
-        "-c", "copy",
-        output_file
+        "curl",
+        "-L",
+        "-A", "Mozilla/5.0 (Linux; Android 13)",
+        "-H", "Referer: https://akstechnicalclasses.classx.co.in/",
+        "-o", output_file,
+        url
     ]
 
     print("Running:", " ".join(cmd))
     result = subprocess.run(cmd)
 
-    if result.returncode == 0 and os.path.isfile(output_file):
+    if result.returncode == 0 and os.path.exists(output_file):
         return output_file
     else:
-        print("Download failed.")
         return None
+
 
 async def download_and_decrypt_video(url, cmd, name, key):
     # Instead of calling download_video, use the new 1DM-style downloader
-    video_path = await downloadwith1dm_style(url, name)
+    video_path = await download_raw_file(url, name):
 
     if video_path and os.path.isfile(video_path):
         decrypted = decrypt_file(video_path, key)
