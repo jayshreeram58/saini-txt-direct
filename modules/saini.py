@@ -232,20 +232,66 @@ def time_name():
     current_time = now.strftime("%H%M%S")
     return f"{date} {current_time}.mp4"
 
+import os, re, asyncio, aiohttp
+from urllib.parse import urljoin
 
+async def fetch_segment(session, seg_url, headers):
+    async with session.get(seg_url, headers=headers, timeout=30) as resp:
+        resp.raise_for_status()
+        return await resp.read()
+
+async def download_m3u8(url: str, filename: str) -> str | None:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 13)",
+        "Referer": "https://player.akamai.net.in/",
+        "Origin": "https://player.akamai.net.in",
+        "Accept": "*/*"
+    }
+    os.makedirs("downloads", exist_ok=True)
+    final_file = f"downloads/{filename}.mp4"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=30) as r:
+                r.raise_for_status()
+                playlist_lines = (await r.text()).splitlines()
+
+        segments = [urljoin(url, line) for line in playlist_lines if line and not line.startswith("#")]
+        if not segments:
+            print("❌ No segments found!")
+            return None
+
+        print(f"🚀 Downloading {len(segments)} segments for {filename}...")
+
+        async with aiohttp.ClientSession() as session:
+            tasks = [fetch_segment(session, seg, headers) for seg in segments]
+            results = await asyncio.gather(*tasks)
+
+        with open(final_file, "wb") as f:
+            for idx, data in enumerate(results, 1):
+                f.write(data)
+                print(f"  ✅ Segment {idx}/{len(segments)} downloaded", end="\r")
+
+        print(f"\n✅ Full video downloaded: {final_file}")
+        return final_file
+
+    except Exception as e:
+        print(f"❌ Download failed: {e}")
+        return None
 import os
 import asyncio
 import subprocess
 import logging
 
-failed_counter = 0
-
 async def download_video(url, cmd, name):
+    if "transcoded" in url.lower():
+        print(f"⚡ Transcoded URL detected → using download_m3u8 for {name}")
+        return download_m3u8(url, name)
+
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
     print(download_cmd)
     logging.info(download_cmd)
-
     k = subprocess.run(download_cmd, shell=True)
 
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
@@ -254,13 +300,14 @@ async def download_video(url, cmd, name):
         return await download_video(url, cmd, name)
 
     failed_counter = 0
+
     try:
         if os.path.isfile(name):
             return name
         elif os.path.isfile(f"{name}.webm"):
             return f"{name}.webm"
 
-        base = name.split(".")[0]
+        base = os.path.splitext(name)[0]  # ✅ correct usage
         if os.path.isfile(f"{base}.mkv"):
             return f"{base}.mkv"
         elif os.path.isfile(f"{base}.mp4"):
@@ -268,16 +315,11 @@ async def download_video(url, cmd, name):
         elif os.path.isfile(f"{base}.mp4.webm"):
             return f"{base}.mp4.webm"
 
-        return name
+        return f"{base}.mp4"
+
     except FileNotFoundError as exc:
         print(f"Error: {exc}")
         return f"{os.path.splitext(name)[0]}.mp4"
-import subprocess
-import os
-
-import subprocess
-import os
-import requests
 import os
 
 import requests
