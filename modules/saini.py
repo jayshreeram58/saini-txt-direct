@@ -240,7 +240,21 @@ async def fetch_segment(session, seg_url, headers):
         resp.raise_for_status()
         return await resp.read()
 
-async def download_m3u8(url: str, filename: str) -> str | None:
+import aiohttp
+import asyncio
+import os
+from urllib.parse import urljoin
+
+async def fetch_segment(session, seg_url, f):
+    async with session.get(seg_url) as resp:
+        resp.raise_for_status()
+        while True:
+            chunk = await resp.content.read(1024*1024)
+            if not chunk:
+                break
+            f.write(chunk)
+
+async def download_m3u8_async(url: str, filename: str):
     headers = {
         "User-Agent": "Mozilla/5.0 (Linux; Android 13)",
         "Referer": "https://player.akamai.net.in/",
@@ -250,34 +264,27 @@ async def download_m3u8(url: str, filename: str) -> str | None:
     os.makedirs("downloads", exist_ok=True)
     final_file = f"downloads/{filename}.mp4"
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=30) as r:
-                r.raise_for_status()
-                playlist_lines = (await r.text()).splitlines()
-
+    async with aiohttp.ClientSession(headers=headers) as session:
+        r = await session.get(url)
+        text = await r.text()
+        playlist_lines = text.splitlines()
         segments = [urljoin(url, line) for line in playlist_lines if line and not line.startswith("#")]
+
         if not segments:
             print("❌ No segments found!")
             return None
 
         print(f"🚀 Downloading {len(segments)} segments for {filename}...")
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [fetch_segment(session, seg, headers) for seg in segments]
-            results = await asyncio.gather(*tasks)
-
         with open(final_file, "wb") as f:
-            for idx, data in enumerate(results, 1):
-                f.write(data)
-                print(f"  ✅ Segment {idx}/{len(segments)} downloaded", end="\r")
+            tasks = [fetch_segment(session, seg_url, f) for seg_url in segments]
+            await asyncio.gather(*tasks)
 
         print(f"\n✅ Full video downloaded: {final_file}")
         return final_file
 
-    except Exception as e:
-        print(f"❌ Download failed: {e}")
-        return None
+# Run
+# asyncio.run(download_m3u8_async("your_m3u8_url", "video_name"))
 import os
 import asyncio
 import subprocess
