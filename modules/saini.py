@@ -219,6 +219,67 @@ def old_download(url, file_name, chunk_size = 1024 * 10):
 
 # appx zip ke liye 
 # helper.py
+import os
+import requests
+import zipfile
+import subprocess
+import tempfile
+import shutil
+
+FIXED_REFERER = "https://player.akamai.net.in/"
+
+def process_zip_to_video(url, name):
+    temp_dir = tempfile.mkdtemp(prefix="zip_")
+
+    zip_path = os.path.join(temp_dir, "file.zip")
+    extract_dir = os.path.join(temp_dir, "extract")
+    output_path = os.path.join(temp_dir, f"{name}.mp4")
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Android)",
+        "Referer": FIXED_REFERER,
+        "Range": "bytes=0-"
+    }
+
+    # 1️⃣ ZIP DOWNLOAD (FIXED REFERER)
+    with requests.get(url, headers=headers, stream=True, timeout=20) as r:
+        r.raise_for_status()
+        with open(zip_path, "wb") as f:
+            for chunk in r.iter_content(1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+    # 2️⃣ EXTRACT ZIP
+    os.makedirs(extract_dir, exist_ok=True)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(extract_dir)
+
+    # 3️⃣ FIND m3u8
+    m3u8_path = None
+    for root, _, files in os.walk(extract_dir):
+        for f in files:
+            if f.endswith(".m3u8"):
+                m3u8_path = os.path.join(root, f)
+                break
+
+    if not m3u8_path:
+        shutil.rmtree(temp_dir)
+        raise Exception("❌ m3u8 file nahi mili")
+
+    # 4️⃣ m3u8 → MP4 (same referer ffmpeg me bhi)
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-headers", f"Referer: {FIXED_REFERER}\r\n",
+        "-allowed_extensions", "ALL",
+        "-i", m3u8_path,
+        "-c", "copy",
+        output_path
+    ]
+
+    subprocess.run(cmd)
+
+    return output_path, temp_dir
 
 import os, requests, zipfile, subprocess
 
@@ -398,6 +459,7 @@ async def download_video(url, cmd, name):
     if "transcoded" in url.lower():
         print(f"⚡ Transcoded URL detected → using download_m3u8 for {name}")
         return download_m3u8(url, name)
+    
 
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
