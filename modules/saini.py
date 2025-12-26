@@ -460,11 +460,11 @@ async def download_video(url, cmd, name):
         print(f"⚡ Transcoded URL detected → using download_m3u8 for {name}")
         return download_m3u8(url, name)
     
-
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
     global failed_counter
     print(download_cmd)
     logging.info(download_cmd)
+
     k = subprocess.run(download_cmd, shell=True)
 
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
@@ -480,7 +480,8 @@ async def download_video(url, cmd, name):
         elif os.path.isfile(f"{name}.webm"):
             return f"{name}.webm"
 
-        base = os.path.splitext(name)[0]  # ✅ correct usage
+        base = name.split(".")[0]
+
         if os.path.isfile(f"{base}.mkv"):
             return f"{base}.mkv"
         elif os.path.isfile(f"{base}.mp4"):
@@ -488,11 +489,10 @@ async def download_video(url, cmd, name):
         elif os.path.isfile(f"{base}.mp4.webm"):
             return f"{base}.mp4.webm"
 
-        return f"{base}.mp4"
+        return name
 
-    except FileNotFoundError as exc:
-        print(f"Error: {exc}")
-        return f"{os.path.splitext(name)[0]}.mp4"
+    except FileNotFoundError:
+        return os.path.splitext(name)[0] + ".mp4"
 import os
 import os
 import time
